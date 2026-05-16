@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UrbanPulse — Climate Simulator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,600;0,9..40,700;1,9..40,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0c1117;
+      --surface: #151c27;
+      --surface2: #1c2636;
+      --border: #2a3548;
+      --text: #e8edf4;
+      --muted: #8b9cb3;
+      --accent: #3ecf8e;
+      --accent-dim: #2a9d68;
+      --warn: #f0a500;
+      --danger: #e85d5d;
+      --low: #3ecf8e;
+      --medium: #f0a500;
+      --high: #e85d5d;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: "DM Sans", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    .header {
+      padding: 1.5rem 2rem;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, #121a28 0%, var(--bg) 100%);
+    }
+    .header h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
+    .header p { color: var(--muted); font-size: 0.9rem; margin-top: 0.25rem; }
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      gap: 0;
+      min-height: calc(100vh - 80px);
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+    }
+    .sidebar {
+      padding: 1.5rem;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .sidebar h2 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .control { margin-bottom: 1.25rem; }
+    .control label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      margin-bottom: 0.35rem;
+    }
+    .control label span.val {
+      font-family: "JetBrains Mono", monospace;
+      color: var(--accent);
+      font-size: 0.8rem;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      height: 6px;
+    }
+    .btn {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      background: var(--accent);
+      color: #0a1210;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.95rem;
+      cursor: pointer;
+      margin-top: 0.5rem;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: #4ee09a; }
+    .btn:disabled { opacity: 0.5; cursor: wait; }
+    .main { padding: 1.5rem 2rem; overflow-x: auto; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+    }
+    .stat .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+    .stat .value { font-size: 1.5rem; font-weight: 700; font-family: "JetBrains Mono", monospace; margin-top: 0.25rem; }
+    .stat .value.good { color: var(--accent); }
+    .stat .value.bad { color: var(--danger); }
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    .tab {
+      padding: 0.5rem 1rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .tab.active { background: var(--accent-dim); color: #fff; border-color: var(--accent); }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    .grid-wards {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+    .ward-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      transition: border-color 0.15s;
+    }
+    .ward-card:hover { border-color: var(--accent-dim); }
+    .ward-card h3 { font-size: 1rem; margin-bottom: 0.75rem; }
+    .metrics { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .metric { font-size: 0.8rem; }
+    .metric strong {
+      display: block;
+      font-family: "JetBrains Mono", monospace;
+      font-size: 1.1rem;
+      color: var(--text);
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.2rem 0.55rem;
+      border-radius: 6px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge.LOW { background: rgba(62, 207, 142, 0.2); color: var(--low); }
+    .badge.MEDIUM { background: rgba(240, 165, 0, 0.2); color: var(--medium); }
+    .badge.HIGH { background: rgba(232, 93, 93, 0.2); color: var(--high); }
+    .recs { margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--border); }
+    .recs ul { list-style: none; font-size: 0.8rem; color: var(--muted); }
+    .recs li { padding: 0.2rem 0; padding-left: 1rem; position: relative; }
+    .recs li::before { content: "›"; position: absolute; left: 0; color: var(--accent); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+    }
+    th, td {
+      padding: 0.65rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th { color: var(--muted); font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
+    tr:hover td { background: var(--surface2); }
+    .delta-pos { color: var(--accent); }
+    .delta-neg { color: var(--danger); }
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      color: var(--muted);
+    }
+    .spinner {
+      width: 32px; height: 32px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 1rem;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .scenario-label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+    .scenario-label strong { color: var(--accent); }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <h1>UrbanPulse Climate Simulator</h1>
+    <p>Pune PMC wards — heat risk &amp; sustainability policy simulator (Hacknovate dataset)</p>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <h2>Policy scenario</h2>
+      <div class="control">
+        <label>Tree coverage <span class="val" id="treeVal">+25%</span></label>
+        <input type="range" id="treePct" min="0" max="50" value="25" step="1" />
+      </div>
+      <div class="control">
+        <label>Rainfall <span class="val" id="rainVal">+10%</span></label>
+        <input type="range" id="rainPct" min="0" max="40" value="10" step="1" />
+      </div>
+      <div class="control">
+        <label>Temperature <span class="val" id="tempVal">-0.5 C</span></label>
+        <input type="range" id="tempDelta" min="-3" max="3" value="-0.5" step="0.1" />
+      </div>
+      <div class="control">
+        <label>Population growth <span class="val" id="popVal">+5%</span></label>
+        <input type="range" id="popGrowth" min="0" max="20" value="5" step="1" />
+      </div>
+      <button class="btn" id="runBtn">Run simulation</button>
+    </aside>
+
+    <main class="main">
+      <div id="loading" class="loading">
+        <div class="spinner"></div>
+        Running climate simulation...
+      </div>
+      <div id="content" style="display:none">
+        <div class="stats" id="statsCurrent"></div>
+        <div class="tabs">
+          <button class="tab active" data-tab="current">Current scenario</button>
+          <button class="tab" data-tab="improved">Improved scenario</button>
+          <button class="tab" data-tab="compare">Comparison</button>
+        </div>
+        <p class="scenario-label" id="policyLabel"></p>
+        <div class="panel active" id="panel-current">
+          <div class="grid-wards" id="wardsCurrent"></div>
+        </div>
+        <div class="panel" id="panel-improved">
+          <div class="grid-wards" id="wardsImproved"></div>
+        </div>
+        <div class="panel" id="panel-compare">
+          <table>
+            <thead>
+              <tr>
+                <th>Ward</th>
+                <th>Heat risk change</th>
+                <th>Sustainability change</th>
+                <th>Before</th>
+                <th>After</th>
+              </tr>
+            </thead>
+            <tbody id="compareBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function bindSliders() {
+      const tree = $("treePct"), rain = $("rainPct"), temp = $("tempDelta"), pop = $("popGrowth");
+      tree.oninput = () => { $("treeVal").textContent = `+${tree.value}%`; };
+      rain.oninput = () => { $("rainVal").textContent = `+${rain.value}%`; };
+      temp.oninput = () => {
+        const v = parseFloat(temp.value);
+        $("tempVal").textContent = `${v >= 0 ? "+" : ""}${v.toFixed(1)} C`;
+      };
+      pop.oninput = () => { $("popVal").textContent = `+${pop.value}%`; };
+    }
+
+    function renderStats(container, summary, prefix) {
+      container.innerHTML = `
+        <div class="stat"><div class="label">Wards</div><div class="value">${summary.ward_count}</div></div>
+        <div class="stat"><div class="label">High risk</div><div class="value bad">${summary.high_risk}</div></div>
+        <div class="stat"><div class="label">Medium risk</div><div class="value">${summary.medium_risk}</div></div>
+        <div class="stat"><div class="label">Low risk</div><div class="value good">${summary.low_risk}</div></div>
+        <div class="stat"><div class="label">Avg heat risk</div><div class="value">${summary.avg_heat_risk}</div></div>
+        <div class="stat"><div class="label">Avg sustainability</div><div class="value good">${summary.avg_sustainability}</div></div>
+      `;
+    }
+
+    function wardCard(w) {
+      const recs = (w.recommendations || []).map(r => `<li>${r}</li>`).join("");
+      return `
+        <article class="ward-card">
+          <h3>${w.ward_name} <span class="badge ${w.risk_category}">${w.risk_category}</span></h3>
+          <div class="metrics">
+            <div class="metric">Heat risk<strong>${w.heat_risk_score}</strong></div>
+            <div class="metric">Sustainability<strong>${w.sustainability_score}</strong></div>
+          </div>
+          <div class="recs"><ul>${recs}</ul></div>
+        </article>
+      `;
+    }
+
+    function renderWards(container, wards) {
+      container.innerHTML = wards.map(wardCard).join("");
+    }
+
+    function renderCompare(rows) {
+      $("compareBody").innerHTML = rows.map(r => {
+        const hc = r.heat_risk_change <= 0 ? "delta-pos" : "delta-neg";
+        const sc = r.sustainability_change >= 0 ? "delta-pos" : "delta-neg";
+        const hSign = r.heat_risk_change > 0 ? "+" : "";
+        const sSign = r.sustainability_change > 0 ? "+" : "";
+        return `<tr>
+          <td>${r.ward_name}</td>
+          <td class="${hc}">${hSign}${r.heat_risk_change.toFixed(2)}</td>
+          <td class="${sc}">${sSign}${r.sustainability_change.toFixed(3)}</td>
+          <td><span class="badge ${r.risk_before}">${r.risk_before}</span></td>
+          <td><span class="badge ${r.risk_after}">${r.risk_after}</span></td>
+        </tr>`;
+      }).join("");
+    }
+
+    async function runSimulation() {
+      $("runBtn").disabled = true;
+      $("loading").style.display = "block";
+      $("content").style.display = "none";
+
+      const body = {
+        tree_pct: parseFloat($("treePct").value),
+        rain_pct: parseFloat($("rainPct").value),
+        temp_delta: parseFloat($("tempDelta").value),
+        pop_growth: parseFloat($("popGrowth").value),
+      };
+
+      try {
+        const res = await fetch("/api/simulate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const data = await res.json();
+
+        renderStats($("statsCurrent"), data.current.summary);
+        renderWards($("wardsCurrent"), data.current.wards);
+        renderWards($("wardsImproved"), data.improved.wards);
+        renderCompare(data.comparison);
+
+        const p = data.improved.policy;
+        $("policyLabel").innerHTML = `Improved scenario: <strong>+${p.tree_coverage_pct}%</strong> trees, <strong>+${p.rainfall_pct}%</strong> rain, <strong>${p.temperature_delta >= 0 ? "+" : ""}${p.temperature_delta}</strong> C, <strong>+${p.population_growth_pct}%</strong> population`;
+
+        $("loading").style.display = "none";
+        $("content").style.display = "block";
+      } catch (e) {
+        $("loading").innerHTML = `<p style="color:var(--danger)">Error: ${e.message}</p>`;
+      }
+      $("runBtn").disabled = false;
+    }
+
+    document.querySelectorAll(".tab").forEach(tab => {
+      tab.onclick = () => {
+        document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+        document.querySelectorAll(".panel").forEach(p => p.classList.remove("active"));
+        tab.classList.add("active");
+        $("panel-" + tab.dataset.tab).classList.add("active");
+      };
+    });
+
+    $("runBtn").onclick = runSimulation;
+    bindSliders();
+    runSimulation();
+  </script>
+</body>
+</html>
