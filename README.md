@@ -16,10 +16,21 @@ Python-based ward-level climate policy simulator for urban heat risk and sustain
 ### Install
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/urbanpulse-climate-simulator.git
+git clone https://github.com/anasp/urbanpulse-climate-simulator.git
 cd urbanpulse-climate-simulator
 pip install -r requirements.txt
 ```
+
+## Deploy to GitHub
+
+From the project folder (after [GitHub CLI](https://cli.github.com/) is installed):
+
+```powershell
+gh auth login
+.\scripts\deploy_github.ps1
+```
+
+This creates a public repo `urbanpulse-climate-simulator` and pushes the `main` branch.
 
 ### CLI
 
